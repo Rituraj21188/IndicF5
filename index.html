@@ -1,197 +1,141 @@
 <!DOCTYPE html>
-<html lang="as">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Assamese Voice Studio (অসমীয়া ভইচ ষ্টুডিঅ')</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <title>IndicF5 TTS Local UI</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      padding: 30px 16px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 28px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    h2 {
+      margin-top: 0;
+      color: #38bdf8;
+    }
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: #94a3b8;
+    }
+    textarea, input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #f8fafc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #0284c7;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover { background: #0369a1; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    #outputSection {
+      margin-top: 24px;
+      display: none;
+    }
+    audio { width: 100%; margin-top: 8px; }
+    .status { margin-top: 12px; font-size: 0.85rem; color: #cbd5e1; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between">
+<body>
+  <div class="card">
+    <h2>IndicF5 TTS Studio (Offline Local)</h2>
 
-  <!-- Header & API Endpoint Bar -->
-  <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center text-white shadow-lg">
-          <i class="fa-solid fa-microphone-lines text-lg"></i>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-white">Assamese VoiceLab</h1>
-          <p class="text-xs text-slate-400">Zero-Shot Voice Cloning via AI4Bharat IndicF5</p>
-        </div>
-      </div>
+    <label for="text">Target Text (Text to Speak):</label>
+    <textarea id="text" rows="3" placeholder="नमस्ते! आप आज कैसे हैं?"></textarea>
 
-      <!-- Tunnel Backend Connection Box -->
-      <div class="flex items-center gap-2">
-        <input id="tunnelUrlInput" type="text" placeholder="Colab Tunnel URL (e.g. https://...loca.lt)" class="bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-lg text-xs w-64 text-slate-200 focus:outline-none focus:border-amber-500" />
-        <button id="btnConnect" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg transition">
-          Connect
-        </button>
-        <span id="connStatus" class="w-2.5 h-2.5 rounded-full bg-red-500" title="Disconnected"></span>
-      </div>
+    <label for="refAudio">Reference Audio File (.wav):</label>
+    <input type="file" id="refAudio" accept="audio/wav,audio/mp3,audio/*" />
+
+    <label for="refText">Reference Audio Transcript:</label>
+    <input type="text" id="refText" placeholder="Exact words spoken in the reference audio above" />
+
+    <button id="runBtn" onclick="synthesize()">Generate Voice</button>
+
+    <div id="status" class="status"></div>
+
+    <div id="outputSection">
+      <label>Generated Result:</label>
+      <audio id="audioPlayer" controls></audio>
     </div>
-  </header>
-
-  <!-- Studio Workspace -->
-  <main class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-    
-    <!-- LEFT PANEL: Voice Reference Record -->
-    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
-      <div class="border-b border-slate-800 pb-3">
-        <h2 class="font-semibold text-base flex items-center gap-2 text-white">
-          <i class="fa-solid fa-microphone text-amber-500"></i> Step 1: Record Voice Sample
-        </h2>
-        <p class="text-xs text-slate-400 mt-1">Read the sentence below clearly for 5–10 seconds.</p>
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <label class="text-xs text-slate-400">Reference Transcript (What you say in the audio):</label>
-        <textarea id="refTranscript" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500 resize-none font-sans" placeholder="যেনে: নমস্কাৰ, মই এয়া মোৰ কণ্ঠ পৰীক্ষা কৰি আছোঁ।"></textarea>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button id="btnToggleRecord" class="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition shadow">
-          <i class="fa-solid fa-circle text-xs"></i> Start Recording
-        </button>
-      </div>
-
-      <audio id="audioPreview" controls class="w-full mt-2 hidden"></audio>
-    </section>
-
-    <!-- RIGHT PANEL: Target Voiceover Generation -->
-    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
-      <div class="border-b border-slate-800 pb-3">
-        <h2 class="font-semibold text-base flex items-center gap-2 text-white">
-          <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Step 2: Target Assamese Text
-        </h2>
-        <p class="text-xs text-slate-400 mt-1">Type or paste any Assamese script to synthesize.</p>
-      </div>
-
-      <textarea id="targetAssameseText" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500 resize-none font-sans" placeholder="যেনে: নমস্কাৰ, আপোনালোক সকলোকে আমাৰ অনুষ্ঠানলৈ স্বাগতম জনাইছোঁ..."></textarea>
-
-      <button id="btnSynthesize" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg">
-        Synthesize in My Voice (কণ্ঠ প্ৰস্তুত কৰক)
-      </button>
-
-      <div id="statusNotice" class="text-xs text-center text-slate-400 min-h-4"></div>
-
-      <!-- Result Player -->
-      <div id="outputContainer" class="border border-slate-800 bg-slate-950 p-4 rounded-xl flex flex-col gap-3 hidden">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-emerald-400"><i class="fa-solid fa-check"></i> Ready</span>
-          <a id="downloadWav" href="#" download="assamese_speech.wav" class="text-xs text-amber-400 hover:underline">
-            <i class="fa-solid fa-download"></i> Download .WAV
-          </a>
-        </div>
-        <audio id="outputAudio" controls class="w-full"></audio>
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="border-t border-slate-900 py-4 text-center text-xs text-slate-500">
-    Assamese VoiceLab • GitHub Pages Client & Google Colab IndicF5 Inference
-  </footer>
+  </div>
 
   <script>
-    let recorder = null, recordedChunks = [], recordedAudioBlob = null;
-    const btnConnect = document.getElementById("btnConnect");
-    const tunnelUrlInput = document.getElementById("tunnelUrlInput");
-    const connStatus = document.getElementById("connStatus");
-    const btnToggleRecord = document.getElementById("btnToggleRecord");
-    const audioPreview = document.getElementById("audioPreview");
-    const btnSynthesize = document.getElementById("btnSynthesize");
-    const statusNotice = document.getElementById("statusNotice");
-    const outputContainer = document.getElementById("outputContainer");
-    const outputAudio = document.getElementById("outputAudio");
-    const downloadWav = document.getElementById("downloadWav");
+    async function synthesize() {
+      const text = document.getElementById('text').value.trim();
+      const refText = document.getElementById('refText').value.trim();
+      const refAudio = document.getElementById('refAudio').files[0];
+      const status = document.getElementById('status');
+      const btn = document.getElementById('runBtn');
+      const outputSection = document.getElementById('outputSection');
+      const audioPlayer = document.getElementById('audioPlayer');
 
-    // Connect & Test Colab Endpoint
-    btnConnect.onclick = async () => {
-      const url = tunnelUrlInput.value.trim().replace(/\/$/, "");
-      if (!url) return alert("Enter your Colab Tunnel URL!");
-      connStatus.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
-      try {
-        const res = await fetch(`${url}/health`, {
-          headers: { "Bypass-Tunnel-Reminder": "true" }
-        });
-        const data = await res.json();
-        connStatus.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
-        alert(`Connected successfully! Server running on ${data.device}`);
-      } catch (err) {
-        connStatus.className = "w-2.5 h-2.5 rounded-full bg-red-500";
-        alert("Failed to connect. Ensure Colab server is running and the tunnel URL is valid.");
+      if (!text) {
+        alert('Please enter text to synthesize.');
+        return;
       }
-    };
+      if (!refAudio || !refText) {
+        alert('IndicF5 requires both a Reference Audio clip and its exact Transcript to mimic the voice.');
+        return;
+      }
 
-    // Microphone Handler
-    btnToggleRecord.onclick = async () => {
-      if (!recorder || recorder.state === "inactive") {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          recordedChunks = [];
-          recorder = new MediaRecorder(stream);
-          recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-          recorder.onstop = () => {
-            recordedAudioBlob = new Blob(recordedChunks, { type: "audio/wav" });
-            audioPreview.src = URL.createObjectURL(recordedAudioBlob);
-            audioPreview.classList.remove("hidden");
-          };
-          recorder.start();
-          btnToggleRecord.innerHTML = `<i class="fa-solid fa-stop"></i> Stop Recording`;
-          btnToggleRecord.classList.replace("bg-red-600", "bg-slate-700");
-        } catch (e) {
-          alert("Microphone permission denied: " + e.message);
+      btn.disabled = true;
+      status.innerText = 'Synthesizing with local IndicF5... Please wait.';
+      outputSection.style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('ref_text', refText);
+      formData.append('ref_audio', refAudio);
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/synthesize', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(errData.detail || 'Inference error');
         }
-      } else {
-        recorder.stop();
-        btnToggleRecord.innerHTML = `<i class="fa-solid fa-microphone"></i> Re-Record Voice`;
-        btnToggleRecord.classList.replace("bg-slate-700", "bg-red-600");
-      }
-    };
 
-    // Synthesize API Call
-    btnSynthesize.onclick = async () => {
-      const url = tunnelUrlInput.value.trim().replace(/\/$/, "");
-      const refText = document.getElementById("refTranscript").value.trim();
-      const targetText = document.getElementById("targetAssameseText").value.trim();
-
-      if (!url) return alert("Please enter and connect your Colab URL first!");
-      if (!recordedAudioBlob) return alert("Please record your voice first!");
-      if (!refText) return alert("Please enter what you said in the reference voice box!");
-      if (!targetText) return alert("Please enter the Assamese text you want synthesized!");
-
-      const form = new FormData();
-      form.append("text", targetText);
-      form.append("ref_text", refText);
-      form.append("audio_file", recordedAudioBlob, "reference.wav");
-
-      btnSynthesize.disabled = true;
-      statusNotice.innerText = "Synthesizing Assamese audio on GPU...";
-
-      try {
-        const response = await fetch(`${url}/api/clone-voice`, {
-          method: "POST",
-          headers: { "Bypass-Tunnel-Reminder": "true" },
-          body: form
-        });
-
-        if (!response.ok) throw new Error(await response.text());
-
-        const blob = await response.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        outputAudio.src = audioUrl;
-        downloadWav.href = audioUrl;
-        outputContainer.classList.remove("hidden");
-        outputAudio.play();
-        statusNotice.innerText = "✅ Synthesis complete!";
+        const blob = await res.blob();
+        audioPlayer.src = URL.createObjectURL(blob);
+        outputSection.style.display = 'block';
+        status.innerText = 'Finished successfully!';
       } catch (err) {
-        statusNotice.innerText = `❌ Error: ${err.message}`;
+        status.innerText = 'Error: ' + err.message;
       } finally {
-        btnSynthesize.disabled = false;
+        btn.disabled = false;
       }
-    };
+    }
   </script>
 </body>
 </html>
